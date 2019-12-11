@@ -38,4 +38,6 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 
+# Project-specific
 ml-10M100K/
+GiovaniAzuaGarcia_MovieLensProject_files/
