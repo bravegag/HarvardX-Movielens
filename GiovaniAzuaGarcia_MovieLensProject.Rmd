@@ -888,7 +888,7 @@ The final RMSE obtained on the validation dataset using the `cFBasic` model (cal
 
 ## ADVANCED method
 
-Note that the ADVANCED model takes the previously `calFitCFBasic` model fit as parameter to do predictions that account for all the effects modeled in the BASIC model implementation. We also note that the column dimensions in P and Q correspond to the distinct number of users and movies respectively. We therefore need a small calibration set otherwise the calibration process will exhaust all the memory available and crash due to the large number of distinct users and movies in the training set. Thankfully, we did so already and built the calibration set containing a maneageable distinct number of 337 users and 596 movies and thus, help keep the size of P and Q under control.
+Note that the ADVANCED model takes the BASIC fit model `calFitCFBasic` or `fitCFBasic` as parameter for calibration or training respectively to do predictions that account for all the effects modeled in the BASIC model implementation. We also note that the column dimensions in P and Q correspond to the distinct number of users and movies respectively. We therefore need a small calibration set otherwise the calibration process will exhaust all the memory available and crash due to the large number of distinct users and movies in the training set. Thankfully, we did so already and built the calibration set containing a maneageable distinct number of 337 users and 596 movies and thus, help keep the size of P and Q under control.
 
 That said, we calibrate the ADVANCED model using the following listing. We get the following best tune hyper-parameters: `K=2` latent dimensions, $\gamma=0.06$ learning rate, $\lambda=0.1$ and $\sigma=0.1$.
 ```{r advanced-calibrate}
@@ -950,7 +950,7 @@ fitCFAdv$finalModel$rmse_hist %>%
   ggplot(aes(k, rmse)) + geom_point() + geom_line()
 
 ##########################################################################################
-## Finally test the ADVANCED model on the final test (a.k.a. validation) set
+## Finally compute the RMSE for the ADVANCED model on the validation set
 ##########################################################################################
 
 ## VALIDATION SET ACCESS ALERT! accessing the validation set to compute RMSE.
