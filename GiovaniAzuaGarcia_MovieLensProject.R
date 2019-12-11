@@ -130,7 +130,7 @@ toc()
 rm(ts_mins)
 
 ##########################################################################################
-## Create experimental dataset as subset of the training dataset with 500k samples
+## Create experimental set as subset of the training set containing 1m samples
 ##########################################################################################
 
 # set the seed again
@@ -452,7 +452,7 @@ cFBasic$predict <- function(modelFit, newdata, preProc = NULL, submodels = NULL)
 }
 
 ##########################################################################################
-## Build the calibration (cross validation) data set subset of the training set.
+## Build the calibration (cross validation) subset of the training set.
 ##########################################################################################
 
 tic("collecting the calibration set of 2k samples, making sure it's a bit dense")
@@ -505,7 +505,7 @@ stopifnot(calFitCFBasic$bestTune$weekSpan == 2)
 stopifnot(calFitCFBasic$bestTune$dayType == "dayOfTheWeek")
 
 ##########################################################################################
-## Fit the best model found to the complete training set
+## Fit the best BASIC model found on the complete edx train set.
 ##########################################################################################
 
 tic('BASIC - training the model on the full training set')
@@ -517,7 +517,7 @@ fitCFBasic <- train(x = train_set,
 toc()
 
 ##########################################################################################
-## Finally test the BASIC model on the final test (a.k.a. validation) set
+## Finally compute the RMSE for the BASIC model on the validation set.
 ##########################################################################################
 
 ## VALIDATION SET ACCESS ALERT! accessing the validation set to compute RMSE.
@@ -768,7 +768,8 @@ stopifnot(calFitCFAdv$bestTune$lambda == 0.1)
 stopifnot(calFitCFAdv$bestTune$sigma == 0.1)
 
 ##########################################################################################
-## Fit the best model found to the complete training set
+## Fit the best model found to the complete training edx set (note that technically SGD 
+## employs a subset and not all the training data).
 ##########################################################################################
 
 maxIter <- 150000
@@ -795,7 +796,7 @@ fitCFAdv$finalModel$rmse_hist %>%
   ggplot(aes(k, rmse)) + geom_point() + geom_line()
 
 ##########################################################################################
-## Finally test the ADVANCED model on the final test (a.k.a. validation) set
+## Finally compute the RMSE for the ADVANCED model on the validation set.
 ##########################################################################################
 
 ## VALIDATION SET ACCESS ALERT! accessing the validation set to compute RMSE.

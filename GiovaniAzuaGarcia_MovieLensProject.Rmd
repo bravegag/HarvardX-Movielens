@@ -45,7 +45,7 @@ For both cases BASIC and ADVANCED, the models were implemented in R fully integr
 
 In this section the two methods BASIC and ADVANCED are presented. For each approach, supporting examples and plots are shown, then the `caret` model implementation source listing is provided which is later executed as part of the results section where the calibration (cross validation), predictions and RMSEs are computed.
 
-We start by running the provided common code which generates the edx (training) and validation datasets. A `portable.set.seed(seed)` function is provided which will execute the correct `seet.seed(seed)` variation depending on the R version:
+We start by running the provided common code which generates the edx (training) and validation sets. A `portable.set.seed(seed)` function is provided which will execute the correct `seet.seed(seed)` variation depending on the R version:
 
 ```{r dataset-creation}
 ##########################################################################################
@@ -157,7 +157,7 @@ train_set <- edx
 validation_set <- validation
 ```
 
-As discussed in the overview section, both approaches presented require the minimum timestamp per movie `min_ts` to be present in each rating sample. The computation of `min_ts` requires joining the edx and validation datasets as the minimum timestamp could be in either of the two and is important that it's the minimum across both datasets. In practice, this "release date" value could be fetch from somewhere else as it's known for each movie but for simplicity the `min_ts` is used as a proxy.
+As discussed in the overview section, both approaches presented require the minimum timestamp per movie `min_ts` to be present in each rating sample. The computation of `min_ts` requires joining the edx and validation sets as the minimum timestamp could be in either of the two and is important that it's the minimum across both sets. In practice, this "release date" value could be fetch from somewhere else as it's known for each movie but for simplicity the `min_ts` is used as a proxy.
 ```{r mininum-ts}
 ##########################################################################################
 ## Computing and adding the minimum timestamp `min_ts` feature needed later. The minimum 
@@ -184,10 +184,10 @@ validation_set <- validation_set %>%
 toc()
 ```
 
-We create an experimental dataset subset of the training edx dataset as follows:
-```{r experimental-dataset}
+We create an experimental set subset of the training edx set as follows:
+```{r experimental-set}
 ##########################################################################################
-## Create experimental dataset as subset of the training dataset with 1m samples
+## Create experimental set as subset of the training set containing 1m samples
 ##########################################################################################
 
 # set the seed again
@@ -199,7 +199,7 @@ experimental_set <- train_set %>%
 
 ## BASIC method
 
-To make a case and demonstrate the BASIC approach, the following code builds the first part of the method as provided by the course book and then the genres and temporal effects are modeled. Note that the following code is executed on a one million random samples subset of the training edx dataset and that the computed RMSEs depict the same decreasing trend as more effects are accounted for in the BASIC model, exactly as it's shown in the course book:
+To make a case and demonstrate the BASIC approach, the following code builds the first part of the method as provided by the course book and then the genres and temporal effects are modeled. Note that the following code is executed on a one million random samples subset of the training edx set and that the computed RMSEs depict the same decreasing trend as more effects are accounted for in the BASIC model, exactly as it's shown in the course book:
 ```{r basic-poc-first}
 # global average
 mu <- mean(experimental_set$rating)
@@ -268,7 +268,7 @@ as.data.frame(rmse_results)
 
 Now the temporal effects day of the week or day of the month are modeled. We can see for this experimental sample training subset that the day of the month apparently provides better RMSE though selecting which day (of the week or of the month) method to use will be part of the calibration (cross validation) process. Note that the code `as.factor(wday(as_datetime(timestamp))` helps extract the day of the week feature from each timestamp which is then recoded into `Mon-Sun` for clarity but not needed in the actual model implementation. The code `as.factor(day(round_date(as_datetime(timestamp), unit = "day")))` helps extract the day of the month. The two generated plots reveal how the mean ratings per group depict dramatic rating changes e.g. Sunday ratings are much higher in average than Friday or Saturday. 
 ```{r basic-poc-temporal1}
-# add day of week feature to the experimental dataset
+# add day of week feature to the experimental set
 experimental_set <- experimental_set %>% 
   mutate(dayOfTheWeek = recode_factor(as.factor(wday(as_datetime(timestamp))), 
                                       `1`='Mon', `2`='Tue', `3`='Wed', `4`='Thu', 
@@ -295,7 +295,7 @@ rmse_results <- bind_rows(rmse_results,
                           tibble(method="Reg. Movie + User + Genre + Day of Week Effects",
                                  RMSE = RMSE(predicted_ratings, experimental_set$rating)))
 
-# add day of month feature to the experimental dataset
+# add day of month feature to the experimental set
 experimental_set <- experimental_set %>% 
   mutate(dayOfTheMonth = as.factor(day(round_date(as_datetime(timestamp), unit = "day"))))
 # compute regularized day of the month effects
@@ -790,10 +790,10 @@ cFAdv$predict <- function(modelFit, newdata, preProc = NULL, submodels = NULL) {
 }
 ```
 
-At this point we need a dataset to calibrate and fit the two model implementations listed above `cFBasic` and `cFAdv`. The ideal calibration set should be a small subset of the training dataset and still be dense enough i.e. contain enough ratings per movie and user so we learn high quality hyper-parameters. The calibration dataset is then built as follows:
+At this point we need another set to calibrate and fit the two model implementations listed above `cFBasic` and `cFAdv`. The ideal calibration set should be a small subset of the training edx set and still be dense enough i.e. contain enough ratings per movie and user so we learn high quality hyper-parameters. The calibration set is then built as follows:
 ```{r calibration-dataset}
 ##########################################################################################
-## Build the calibration (cross validation) data set subset of the training set.
+## Build the calibration (cross validation) subset of the training set.
 ##########################################################################################
 
 tic("collecting the calibration set of 2k samples, making sure it's a bit dense")
@@ -859,7 +859,7 @@ stopifnot(calFitCFBasic$bestTune$dayType == "dayOfTheWeek")
 At this point we're ready to train the `cFBasic` model on the whole training set and compute the out of sample RMSE on the validation set.
 ```{r basic-train-test}
 ##########################################################################################
-## Fit the best BASIC model found on the complete training edx dataset
+## Fit the best BASIC model found on the complete edx train set.
 ##########################################################################################
 
 tic('BASIC - training the model on the full training set')
@@ -871,7 +871,7 @@ fitCFBasic <- train(x = train_set,
 toc()
 
 ##########################################################################################
-## Finally test the BASIC model on the final validation) dataset
+## Finally compute the RMSE for the BASIC model on the validation set.
 ##########################################################################################
 
 ## VALIDATION SET ACCESS ALERT! accessing the validation set to compute RMSE.
@@ -884,7 +884,7 @@ cat(sprintf("BASIC - RMSE on validation data is %.9f", rmse_val))
 stopifnot(abs(rmse_val - 0.864080283) < 1e-9)
 ```
 
-The final RMSE obtained on the validation dataset using the `cFBasic` model (calibrated and trained only on the edx training set) is `RMSE=0.864080283` well below `0.8649`.
+The final RMSE obtained on the validation set using the BASIC `fitCFBasic` fit (calibrated and trained only on the full edx training set) is `RMSE=0.864080283` well below `0.8649`.
 
 ## ADVANCED method
 
@@ -893,7 +893,7 @@ Note that the ADVANCED model takes the BASIC fit model `calFitCFBasic` or `fitCF
 That said, we calibrate the ADVANCED model using the following listing. We get the following best tune hyper-parameters: `K=2` latent dimensions, $\gamma=0.06$ learning rate, $\lambda=0.1$ and $\sigma=0.1$.
 ```{r advanced-calibrate}
 ##########################################################################################
-## Calibrate the CF ADVANCED model on the calibration set (subset of the training set). 
+## Calibrate the CF ADVANCED model on the calibration set (subset of the training edx set). 
 ## Here I look for the best hyper-parameters that fit the advanced model on a small subset  
 ## of the training data.
 ##########################################################################################
@@ -923,7 +923,8 @@ stopifnot(calFitCFAdv$bestTune$sigma == 0.1)
 At this point we're ready to train the `cFAdv` model on the training edx set (note that SGD should normally require a small number of random samples) and compute the out of sample RMSE on the validation set. In this case, convergence is tracked i.e. `trackConv=TRUE` using `perTrack=0.003` or 0.3% of the 150k random samples i.e. 450 samples. We then can see a plot of how the RMSE decreases as the low-rank matrix factorization ADVANCED model is trained with more random samples.
 ```{r advanced-train-test}
 ##########################################################################################
-## Fit the best model found to the complete training set
+## Fit the best model found to the complete training edx set (note that technically SGD 
+## employs a subset and not all the training data).
 ##########################################################################################
 
 maxIter <- 150000
@@ -950,7 +951,7 @@ fitCFAdv$finalModel$rmse_hist %>%
   ggplot(aes(k, rmse)) + geom_point() + geom_line()
 
 ##########################################################################################
-## Finally compute the RMSE for the ADVANCED model on the validation set
+## Finally compute the RMSE for the ADVANCED model on the validation set.
 ##########################################################################################
 
 ## VALIDATION SET ACCESS ALERT! accessing the validation set to compute RMSE.
@@ -962,7 +963,7 @@ stopifnot(abs(rmse_val - 0.864173163) < 1e-9)
 toc()
 ```
 
-The final RMSE obtained on the validation dataset using the `cFAdv` model (calibrated and trained only on the edx training set) is `RMSE=0.864173163` well below `0.8649` too but not better than the BASIC approach. A possible reason for this result may be that we'd need many more iterations or random samples to reach a better RMSE as we have ran the algorithm on only 1.67% of the edx training data i.e. `maxIter=150000`.
+The final RMSE obtained on the validation set using the ADVANCED `fitCFAdv` model (calibrated and trained only on the full edx training set) is `RMSE=0.864173163` well below `0.8649` too but not better than the BASIC approach. A possible reason for this result may be that we'd need many more iterations or random samples to reach a better RMSE as we have ran the algorithm on only 1.67% of the edx training data i.e. `maxIter=150000`.
 
 # Conclusion
 
@@ -979,7 +980,3 @@ The following solutions were explored without success, either calibration or tra
 1. Generating "one hot" encoded version of the genres i.e. `splitstackshape::cSplit_e(train_set , "genres", "|", type = "character", fill = 0, drop = TRUE)` and then fitting the genres using `lm`, `glm`, etc.
 2. Having the ADVANCED model learn all the effects and not only the user-movie interactions after standard scaling (z-scoring) the ratings.
 3. Having the ADVANCED model learn from samples sorted by absolute residual value in descending order. 
-
-
-
-
