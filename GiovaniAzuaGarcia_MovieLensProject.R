@@ -488,9 +488,9 @@ tic('BASIC - calibrating the model')
 portable.set.seed(1)
 control <- trainControl(method = "cv",
                         search = "grid",
-                        number = 10,
-                        p = .9,
-                        allowParallel = TRUE,
+                        number = 10,               # use 10 K-folds in cross validation
+                        p = .9,                    # use 90% of training and 10% for testing
+                        allowParallel = TRUE,      # execute CV folds in parallel
                         verboseIter = TRUE)
 calFitCFBasic <- train(x = calibration_set,
                        y = calibration_set$rating,
@@ -526,7 +526,7 @@ predicted_ratings <- predict(fitCFBasic, validation_set)
 rmse_val <- RMSE(predicted_ratings, validation_set$rating)
 toc()
 cat(sprintf("BASIC - RMSE on validation data is %.9f", rmse_val))
-# check that we get a reproducible result
+# check that we get reproducible results
 stopifnot(abs(rmse_val - 0.864080283) < 1e-9)
 
 ##########################################################################################
@@ -639,11 +639,12 @@ cFAdv$fit <- function(x, y, wts, param, lev, last, weights, classProbs, P=NULL, 
       mutate(predicted=mu + b_i + b_u + b_g + b_w + pq) %>% 
       pull(predicted)
     
+    # check for NAs
     if(any(is.na(predicted))) {
       stop(sprintf("train - na detected for K=%d, gamma=%.6f, lambda=%.6f, sigma=%.6f", 
                   param$K, param$gamma, param$lamda, param$sigma))
     }
-    rmse_val <- RMSE(predicted, subset_samples$rating)
+    return(RMSE(predicted, subset_samples$rating))
   }
   
   # add the week feature to model temporal effects
@@ -665,28 +666,30 @@ cFAdv$fit <- function(x, y, wts, param, lev, last, weights, classProbs, P=NULL, 
   rmse_val <- computeRMSE(subset_samples)
   
   if (trackConv) {
-    rmse_hist <- tibble(k=0, rmse=rmse_val)
+    rmse_hist <- tibble(iter=0, rmse=rmse_val)
   } else {
     rmse_hist <- NULL
   }
   
-  for (k in 1:nrow(samples)) {
-    i <- as.character(samples[k,]$movieId)
-    u <- as.character(samples[k,]$userId)
+  # run the SGD algorithm
+  for (iter in 1:nrow(samples)) {
+    i <- as.character(samples[iter,]$movieId)
+    u <- as.character(samples[iter,]$userId)
     
     # compute the residual
-    residual <- samples[k,]$residual - (P[,u]%*%Q[,i])[1]
+    residual <- samples[iter,]$residual - (P[,u]%*%Q[,i])[1]
     
-    # update the latent vectors
-    P[,u] <- (P[,u] + param$gamma*(residual*Q[,i] - param$lambda*P[,u]))
+    # consistently update the latent vectors
+    P_new <- (P[,u] + param$gamma*(residual*Q[,i] - param$lambda*P[,u]))
     Q[,i] <- (Q[,i] + param$gamma*(residual*P[,u] - param$lambda*Q[,i]))
+    P[,u] <- P_new
 
     # track convergence every "iterBreaks" steps
-    if (trackConv && k %% iterBreaks == 0) {
+    if (trackConv && iter %% iterBreaks == 0) {
       # check rmse
       rmse_val <- computeRMSE(subset_samples)
-      cat(sprintf('the RMSE at k=%d is %.9f\n', k, rmse_val))
-      rmse_hist <- rbind(rmse_hist, tibble(k=k, rmse=rmse_val))
+      cat(sprintf('the RMSE at iter=%d is %.9f\n', iter, rmse_val))
+      rmse_hist <- rbind(rmse_hist, tibble(iter=iter, rmse=rmse_val))
     }
   }
 
@@ -751,9 +754,9 @@ tic('ADVANCED: calibrating the model')
 portable.set.seed(1)
 control <- trainControl(method = "cv",
                         search = "grid",
-                        number = 10,
-                        p = .9,
-                        allowParallel = TRUE,
+                        number = 10,               # use 10 K-folds in cross validation
+                        p = .9,                    # use 90% of training and 10% for testing
+                        allowParallel = TRUE,      # execute CV folds in parallel
                         verboseIter = TRUE)
 calFitCFAdv <- train(x = calibration_set,
                      y = calibration_set$rating,
@@ -793,7 +796,7 @@ toc()
 
 # plot the convergence for the advanced model training on the full edx
 fitCFAdv$finalModel$rmse_hist %>%
-  ggplot(aes(k, rmse)) + geom_point() + geom_line()
+  ggplot(aes(iter, rmse)) + geom_point() + geom_line()
 
 ##########################################################################################
 ## Finally compute the RMSE for the ADVANCED model on the validation set.
@@ -804,5 +807,6 @@ tic("ADVANCED: predicting ratings on the full validation set")
 predicted_ratings <- predict(fitCFAdv, validation_set)
 rmse_val <- RMSE(predicted_ratings, validation_set$rating)
 cat(sprintf("ADVANCED - RMSE on validation data is %.9f", rmse_val))
-stopifnot(abs(rmse_val - 0.864173163) < 1e-9)
+# check that we get reproducible results
+stopifnot(abs(rmse_val - 0.864152899) < 1e-9)
 toc()
